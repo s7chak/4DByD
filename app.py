@@ -5,7 +5,7 @@ from flask import Flask, render_template, session, request, \
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
 
-import time
+import time, re, json
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
 # the best option based on installed packages.
@@ -19,14 +19,6 @@ thread_lock = Lock()
 
 
 def background_thread(filename):
-    """Example of how to send server generated events to clients."""
-    # count = 0
-    # while True:
-    #     socketio.sleep(10)
-    #     count += 1
-    #     socketio.emit('my_response',
-    #                   {'data': 'Server generated event', 'count': count},
-    #                   namespace='/test')
     lines=[]
     l2='none'
     thefile = open(filename,'r')
@@ -39,86 +31,48 @@ def background_thread(filename):
             time.sleep(1)
             continue
         elif ('Traceback' in line):
+            print("-------------Found Error!")
             lines+=line
             while 'Error:' not in line:
                 line=thefile.readline()
                 lines+=line
-            jsonLines = jsonify(lines)
-            emit('error_event', jsonLines)
+            print(str(errorLog(lines)))
+
+
+
+#Generate Json String (The return is Json String, therefore index will be weird)
+def errorLog(Data):
+    x=0
+    ErrorLog = []
+    print("-------------JSONifying Error")
+    #For each splitted segment
+    for i in Data:
+        #Timestamp
+        Time = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',i)
+        #Error Type
+        ErrorType = re.findall(r'\n(\S+Error)', i)
+        #Error Message
+        ErrorMsg = re.findall(r'Error:\s(.*)', i)
+        #File Location and File Name
+        File = re.findall(r'File \"(.*)\"', i)
+        #Error line of code
+        Line = re.findall(r'line (\d+)', i)
+        #Create Dictionary that records the trackback sequence and files
+        Dict = {}
+        for j in range(len(File)):
+            #Create Tuple with matched File Name and Error Line 
+            ErrorDest = (File[j],Line[j])
+            #Match sequence with Tuple
+            Dict[j]=ErrorDest
+        ErrorLog.append([x,Time,ErrorType,ErrorMsg,Dict])
+        x=x+1
+    return json.dumps(ErrorLog)
+
 
 @app.route('/')
 def index():
     return render_template('index.html', async_mode=socketio.async_mode)
 
-
-@socketio.on('my_event', namespace='/test')
-def test_message(message):
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response',
-         {'data': message['data'], 'count': session['receive_count']})
-
-
-@socketio.on('my_broadcast_event', namespace='/test')
-def test_broadcast_message(message):
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response',
-         {'data': message['data'], 'count': session['receive_count']},
-         broadcast=True)
-
-
-@socketio.on('join', namespace='/test')
-def join(message):
-    join_room(message['room'])
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response',
-         {'data': 'In rooms: ' + ', '.join(rooms()),
-          'count': session['receive_count']})
-
-
-@socketio.on('leave', namespace='/test')
-def leave(message):
-    leave_room(message['room'])
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response',
-         {'data': 'In rooms: ' + ', '.join(rooms()),
-          'count': session['receive_count']})
-
-
-@socketio.on('close_room', namespace='/test')
-def close(message):
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response', {'data': 'Room ' + message['room'] + ' is closing.',
-                         'count': session['receive_count']},
-         room=message['room'])
-    close_room(message['room'])
-
-
-@socketio.on('my_room_event', namespace='/test')
-def send_room_message(message):
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    emit('my_response',
-         {'data': message['data'], 'count': session['receive_count']},
-         room=message['room'])
-
-
-@socketio.on('disconnect_request', namespace='/test')
-def disconnect_request():
-    @copy_current_request_context
-    def can_disconnect():
-        disconnect()
-
-    session['receive_count'] = session.get('receive_count', 0) + 1
-    # for this emit we use a callback function
-    # when the callback function is invoked we know that the message has been
-    # received and it is safe to disconnect
-    emit('my_response',
-         {'data': 'Disconnected!', 'count': session['receive_count']},
-         callback=can_disconnect)
-
-
-@socketio.on('my_ping', namespace='/test')
-def ping_pong():
-    emit('my_pong')
 
 
 @socketio.on('connect', namespace='/test')
@@ -130,10 +84,6 @@ def test_connect():
           thread = socketio.start_background_task(background_thread, filename)
     emit('my_response', {'data': 'Connected', 'count': 0})
 
-
-@socketio.on('disconnect', namespace='/test')
-def test_disconnect():
-    print('Client disconnected', request.sid)
 
 
 if __name__ == '__main__':
