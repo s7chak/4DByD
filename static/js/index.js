@@ -71,16 +71,16 @@ class AppContainer extends React.Component {
             dom.$video.hide()
             dom.$mount.css('background', '')
             return (
-                <div>
+                <div className="container table-container">
                     <p>The next error message will be:</p>
-                    <p>
+                    <p className="code-font">
                         error,: couldn\\t connect to server aaa.a.a.a:aaaaa, connection attempt failed: socketexception
                     </p>
-                    <button
+                    <button className='btn btn-light'
                         onClick={() => {
-                            this.console.bind(this)
+                            this.console(this)
                         }}
-                    ></button>
+                    >Back to Console</button>
                 </div>
             )
         }
@@ -91,13 +91,13 @@ class TableContainer extends React.Component {
     render() {
         if (errors.length > 0) {
             return (
-                <div className="container" id="table-container">
+                <div className="container table-container">
                     <h2 className="center gray pb-3">4DByD debugger console</h2>
                     <div className="card border shadow rounded" id="table-card">
                         <Table errors={this.props.errors} />
                     </div>
                     <p className="center gray pt-3">Click on an error to open the relevant files</p>
-                    <button
+                    <button className='btn btn-light'
                         onClick={() => {
                             this.props.predict()
                         }}
@@ -123,7 +123,7 @@ class Table extends React.Component {
                 <thead>
                     <Row header={true}></Row>
                 </thead>
-                <tbody>
+                <tbody className="code-font">
                     {this.props.errors.map(error => (
                         <Row header={false} error={error}></Row>
                     ))}

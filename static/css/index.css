@@ -15,7 +15,7 @@ body,
     justify-content: center;
 }
 
-tbody {
+.code-font {
     font-family: monaco, Consolas, Lucida Console, monospace;
 }
 
@@ -51,7 +51,7 @@ th {
     -webkit-box-orient: vertical;
 }
 
-#table-container {
+.table-container {
     display: flex;
     flex-direction: column;
     justify-content: center;
