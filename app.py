@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 from threading import Lock
-from flask import Flask, render_template, jsonify, session, request, \
+from flask import Flask, url_for, render_template, jsonify, redirect, session, request, \
 	copy_current_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
 	close_room, rooms, disconnect
+
 from forms import ErrorSearchForm
 import time, re, json, csv, requests, os
 import subprocess
@@ -51,70 +52,66 @@ def background_thread(filename):
         elif 'Got exception' in line:
             print("-------------Found Error!")
             lines += line
-
-            while 'Error:' not in line:
-                line = thefile.readline()
-                lines += line
+        while 'Error:' not in line:
             line = thefile.readline()
-            print(lines)
-
-            socketio.emit('err', errorLog(lines), namespace='/test')
-
-            print(log_list)
-
-            with open('data2.csv', 'w') as output_file:
-                dict_writer = csv.DictWriter(output_file,
-                                             fieldnames=["ID", "Time", "ErrorType", "ErrorMessage", "File-Line",
-                                                         "ProjectName"])
-                dict_writer.writeheader()
-                dict_writer.writerows(log_list)
-
+            lines += line
+        line = thefile.readline()
+        print(lines)
+        
+        socketio.emit('err', errorLog(lines), namespace='/test')
+        
+        print(log_list)
+        
+        with open('data2.csv', 'w') as output_file:
+            dict_writer = csv.DictWriter(output_file, fieldnames=["ID","Time","ErrorType","ErrorMessage","File-Line","ProjectName"])
+            dict_writer.writeheader()
+            dict_writer.writerows(log_list)
 # Generate Json String (The return is Json String, therefore index will be weird)
 
 def errorLog(i):
     ErrorLog = []
     print("-------------JSONifying Error")
-    # Initialize
-    x = 0
+    #Initialize
+    x=0
     global errorcount
     ErrorLog = {}
     # for i in Data:
-    # Timestamp
-    Time = flatten(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', i))
+    #Timestamp
+    Time = flatten(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',i))
     print(Time)
-    # Error Type
+    #Error Type
     ErrorType = flatten(re.findall(r'\n(\S+Error)', i))
-    # Error Message
+    #Error Message
     ErrorMsg = flatten(re.findall(r'Error:\s(.*)', i))
-    # File Location and File Name
+    #File Location and File Name
     File = re.findall(r'File \"(.*)\"', i)
-    # Error line of code
+    #Error line of code
     Line = flatten(re.findall(r'line (\d+)', i))
-    # Create Dictionary that records the trackback sequence and files
+    #Create Dictionary that records the trackback sequence and files
     Dict = {}
     for j in range(len(File)):
-        ErrorDest = {}
-        # Create Tuple with matched File Name and Error Line
-        ErrorDest = {"File": flatten(File[j]), "Line": flatten(Line[j])}
-        # Match sequence with Tuple
-        Dict[j] = ErrorDest
-    x = x + 1
+        ErrorDest={}
+        #Create Tuple with matched File Name and Error Line 
+        ErrorDest = {"File":flatten(File[j]),"Line":flatten(Line[j])}
+        #Match sequence with Tuple
+        Dict[j]=ErrorDest
+    x=x+1
     today = datetime.now().strftime("%Y-%m-%d")
-    date = datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
-    datestring = date.strftime("%Y-%m-%d")
+    date=datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+    datestring=date.strftime("%Y-%m-%d")
     print(today)
     print(date)
-    if today == datestring:
-        print("ErrCount:" + str(errorcount))
-        errorcount += 1
+    if today == datestring:       
+        print("ErrCount:"+str(errorcount))
+        errorcount+=1
     else:
-        errorcount = 0
-    ProjectName = datestring + "_" + str(errorcount)
-    ErrorLog = {"ID": errorcount, "Time": Time, "ErrorType": ErrorType, "ErrorMessage": ErrorMsg, "File-Line": Dict,
-                "ProjectName": ProjectName}
+        errorcount=0
+    ProjectName = datestring
+    ErrorLog = {"ID":errorcount,"Time":Time,"ErrorType":ErrorType,"ErrorMessage":ErrorMsg,"File-Line":Dict, "ProjectName":ProjectName}
     log_list.append(ErrorLog)
-
+    createFolder(ErrorType)
     return json.dumps(ErrorLog)
+
 
 @app.route('/')
 def index():
@@ -130,16 +127,14 @@ def setfilename():
 
 @socketio.on('openfile', namespace='/test')
 def openfilesocket(message):
-    print("------OPEN FILE------")
-    jsonobject = message
-    fileLine = jsonobject['File-Line']
-    print("------OPEN FILE------")
-    for key, value in fileLine.items():
-        print("------OPEN FILE------")
-        File = value['File']
-        Line = value['Line']
-        if '<ipython' not in File:
-            openfile(File, Line)
+	print("------OPEN FILE------")
+	jsonobject = message
+	fileLine = jsonobject['File-Line']
+	for key, value in fileLine.items():
+		File = value['File']
+		Line = value['Line']
+		if '<ipython' not in File:
+			openfile(File, Line)
 
 
 def openfile(File, Line=""):
@@ -148,11 +143,12 @@ def openfile(File, Line=""):
 
 
 @app.route("/search", methods=['GET', 'POST'])
-def errorsearch():
-    form = ErrorSearchForm()
-    if form.validate_on_submit():
-        print(searchFile(form.filename.data, form.date.data))
-    return render_template("search.html", title="Search Error", form=form)
+def search():
+	form = ErrorSearchForm()
+	if form.validate_on_submit():
+		print(searchFile(form.filename.data, form.date.data))
+
+	return render_template("search.html", title="Search Error", form=form, message="")
 
 
 @socketio.on('connect', namespace='/test')
@@ -167,7 +163,7 @@ def test_connect():
 	emit('my_response', {'data': 'Connected', 'count': 0})
 
 # @app.route("/create", methods=['GET', 'POST'])
-def createFolder():
+def createFolder(ProjectName):
 
     today = date.today()
     mmddyy = today.strftime("%m-%d-%y")
@@ -198,17 +194,15 @@ def createFolder():
     print("resp:")
     response = session.post(str(baseUrl + '/dms/objects'), files=multipart_form_data, headers=headerDict)
     print(response.json())
-    addFile(folderName)
-    # return (response.content)
+    addFile(folderName, ProjectName)
+    return (response.content)
 
 
 # @app.route("/<folder>/add", methods=['GET', 'POST'])
-def addFile(folder):
+def addFile(folder, ProjectName):
 
     queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}')".format(folder), "skipCount": 0, "maxItems": 50}}
-
-    metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "documentType1"}, "name": {"value": filename}, "enaio:parentId": {"value": "8b3b452c-07d2-489a-8b79-91d46f802bac"} }, "contentStreams": [{"cid": "cid_63apple"}] }] }
-
+    metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "documentType1"}, "name": {"value": ProjectName}, "enaio:parentId": {"value": "8b3b452c-07d2-489a-8b79-91d46f802bac"} }, "contentStreams": [{"cid": "cid_63apple"}] }] }
 
     jsonPath = "json/metadatachild.json"
     contentPath = "content/error8.txt" ## this is the error file you are trying to upload
@@ -243,36 +237,37 @@ def addFile(folder):
     return (response.content)
 
 # @app.route("/searchFile", methods=['GET','POST'])
-def searchFile():
-    fileName = request.args.get('name')
-    date = request.args.get('date')
+def searchFile(name, date):
 
-
-    fileName = request.args.get('name')
-    date = request.args.get('date')
-
-    queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}') AND enaio:creationDate = '{}'".format(fileName,date), "skipCount": 0, "maxItems": 50}}
-    print(queryJson)
-
+    print("name {} date {}".format(name,date))
+    # fileName = request.args.get('name')
+    # date = request.args.get('date')
+    queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}') AND enaio:creationDate = '{}'".format(name,date), "skipCount": 0, "maxItems": 50}}
+    print(jsonify(queryJson))
     headerDict = {}
     baseUrl = 'https' + '://' + 'api.yuuvis.io'
-
     header_name = 'Content-Type'
-
     header_name = 'Ocp-Apim-Subscription-Key'
     headerDict['Ocp-Apim-Subscription-Key'] = api_key
-
     session = requests.Session()
-
     multipart_form_data = {
         'data': ('data.json', queryJson, 'application/json')
     }
-
     print(type(multipart_form_data))
-    print("resp")
+
+    # print("resp"+response)
     response = session.post(str(baseUrl + '/dms/objects/search'), json=queryJson, headers=headerDict)
-    print(response.json())
-    return (response.content)
+    jsonResponse = response.content.decode('utf8').replace("'", '"')
+
+    # Load the JSON to a Python list & dump it back out as formatted JSON
+    data = json.loads(jsonResponse)
+    s = json.dumps(data, sort_keys=True)
+    # print(s[0][5].split(':')[0])
+    print(s)
+    openfile(name+'.code-workspace')
+
+    # obj = s['enaio:objectTypeId']
+    redirect(url_for('search', message="Success finding files"))
 
 if __name__ == '__main__':
 	socketio.run(app, debug=True)
