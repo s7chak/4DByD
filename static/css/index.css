@@ -1,16 +1,23 @@
 body {
-    background-color: #8b8589 ;
+    background-color: #8b8589;
+}
+
+html,
+body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+tbody {
+    font-family: monaco, Consolas, Lucida Console, monospace;
 }
 
 td,
 th {
-    color: #ffffff;
-    padding: 20px 30px !important;
+    padding: 15px 20px !important;
     vertical-align: middle !important;
-}
-
-td {
-    font-family: monaco, Consolas, Lucida Console, monospace;
 }
 
 @media (min-width: 1366px) {
@@ -35,6 +42,17 @@ td {
     -webkit-box-orient: vertical;
 }
 
+#app-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0;
+    max-height: 800px;
+    flex: 0 0 auto;
+}
+
 #app {
-    padding: 50px 0;
+    display: block;
+    flex: 0 1 auto;
+    overflow-y: scroll;
 }

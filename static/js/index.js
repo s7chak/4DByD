@@ -1,31 +1,35 @@
-const fakeError = { Time: 'Time', ErrorType: 'ErrorType', ErrorMessage: 'ErrorMessage' }
+const fakeError = { Time: 'Time', ErrorType: 'Error type', ErrorMessage: 'Message' }
 const errors = [
     {
         Time: '2015-06-07',
         ErrorType: 'NullPointerException',
-        ErrorMessage:
-            'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual Studio 2012/Projects/ConsoleApplication1/ConsoleApplication1/1.txt")' +
-            'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual Studio 2012/Projects/ConsoleApplication1/ConsoleApplication1/1.txt")' +
-            'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual Studio 2012/Projects/ConsoleApplication1/ConsoleApplication1/1.txt")'
-    },
-    {
-        Time: '2015-06-07',
-        ErrorType: 'NullPointerException',
-        ErrorMessage:
-            'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual Studio 2012/Projects/ConsoleApplication1/ConsoleApplication1/1.txt")'
-    },
-    {
-        Time: '2015-06-07',
-        ErrorType: 'NullPointerException',
-        ErrorMessage:
-            'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual Studio 2012/Projects/ConsoleApplication1/ConsoleApplication1/1.txt")'
+        ErrorMessage: 'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual")'
     }
 ]
 
 class Table extends React.Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            errors: errors
+        }
+        const namespace = '/test'
+        const socket = io(namespace)
+        socket.on('connect', () => {
+            socket.emit('my_event', { data: "I'm connected!" })
+        })
+        socket.on('err', message => {
+            const newError = JSON.parse(message)
+            errors.unshift(newError)
+            this.setState({
+                errors: errors
+            })
+        })
+    }
+
     render() {
         return (
-            <table className="table table-striped table-hover table-dark" cellPadding="30">
+            <table className="table table-striped table-hover table-light mb-0">
                 <thead>
                     <Row header={true} error={fakeError}></Row>
                 </thead>
@@ -72,19 +76,6 @@ class Cell extends React.Component {
 }
 
 $(document).ready(function() {
-    const namespace = '/test'
-
-    //     http[s]://<domain>:<port>[/<namespace>]
-    const socket = io(namespace)
-
-    socket.on('connect', function() {
-        socket.emit('my_event', { data: "I'm connected!" })
-    })
-
-    socket.on('err', function(message) {
-        window.console.log(message)
-    })
-
     let domContainer = document.querySelector('#app')
     ReactDOM.render(<Table />, domContainer)
 })
