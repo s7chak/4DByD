@@ -121,14 +121,15 @@ def setfilename():
 
 @socketio.on('openfile', namespace='/test')
 def openfilesocket(message):
-    jsonobject = json.loads(message)
-    print("---------"+message)
+    print("------OPEN FILE------")
+    jsonobject = message
     fileLine = jsonobject['File-Line']
     for key, value in fileLine.items():
         File=value['File']
         Line=value['Line']
         if '<ipython' not in File:
             openfile(File,Line)
+
 
 
 
