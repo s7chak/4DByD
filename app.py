@@ -6,6 +6,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
 
 import time, re, json
+from datetime import datetime
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
 # the best option based on installed packages.
@@ -16,62 +17,101 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, async_mode=async_mode)
 thread = None
 thread_lock = Lock()
+filename='test.txt'
+errorcount=0
 
+def flatten(arr):
+    print(arr)
+    if isinstance(arr, list):
+        if len(arr) == 0:
+            return None
+        elif len(arr) == 1:
+            return arr[0]
+    return arr
 
 def background_thread(filename):
-    lines=[]
+    
+    print(filename)
+    lines=''
     l2='none'
     thefile = open(filename,'r')
     thefile.seek(0,2)
-    errcount = 0
     while True:
+        lines=''
         print("reading....")
         line = thefile.readline()
         if not line:
             time.sleep(1)
             continue
-        elif ('Traceback' in line):
+        elif 'Got exception' in line:
             print("-------------Found Error!")
             lines+=line
             while 'Error:' not in line:
                 line=thefile.readline()
                 lines+=line
-            print(str(errorLog(lines)))
+            line=thefile.readline()
+            print(lines)
+            emit('err', errorLog(lines))
+
 
 
 
 #Generate Json String (The return is Json String, therefore index will be weird)
-def errorLog(Data):
-    x=0
+    
+def errorLog(i):
     ErrorLog = []
     print("-------------JSONifying Error")
-    #For each splitted segment
-    for i in Data:
-        #Timestamp
-        Time = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',i)
-        #Error Type
-        ErrorType = re.findall(r'\n(\S+Error)', i)
-        #Error Message
-        ErrorMsg = re.findall(r'Error:\s(.*)', i)
-        #File Location and File Name
-        File = re.findall(r'File \"(.*)\"', i)
-        #Error line of code
-        Line = re.findall(r'line (\d+)', i)
-        #Create Dictionary that records the trackback sequence and files
-        Dict = {}
-        for j in range(len(File)):
-            #Create Tuple with matched File Name and Error Line 
-            ErrorDest = (File[j],Line[j])
-            #Match sequence with Tuple
-            Dict[j]=ErrorDest
-        ErrorLog.append([x,Time,ErrorType,ErrorMsg,Dict])
-        x=x+1
+    #Initialize
+    x=0
+    global errorcount
+    ErrorLog = {}
+    # for i in Data:
+    #Timestamp
+    Time = flatten(re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}',i))
+    print(Time)
+    #Error Type
+    ErrorType = flatten(re.findall(r'\n(\S+Error)', i))
+    #Error Message
+    ErrorMsg = flatten(re.findall(r'Error:\s(.*)', i))
+    #File Location and File Name
+    File = re.findall(r'File \"(.*)\"', i)
+    #Error line of code
+    Line = flatten(re.findall(r'line (\d+)', i))
+    #Create Dictionary that records the trackback sequence and files
+    Dict = {}
+    for j in range(len(File)):
+        ErrorDest={}
+        #Create Tuple with matched File Name and Error Line 
+        ErrorDest = {"File":flatten(File[j]),"Line":flatten(Line[j])}
+        #Match sequence with Tuple
+        Dict[j]=ErrorDest
+    x=x+1
+    today = datetime.now().strftime("%Y-%m-%d")
+    date=datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
+    datestring=date.strftime("%Y-%m-%d")
+    print(today)
+    print(date)
+    if today == datestring:       
+        print("ErrCount:"+str(errorcount))
+        errorcount+=1
+    else:
+        errorcount=0
+    ProjectName = datestring+"_"+str(errorcount)
+    ErrorLog = {"ID":errorcount,"Time":Time,"ErrorType":ErrorType,"ErrorMessage":ErrorMsg,"File-Line":Dict, "ProjectName":ProjectName}
+
     return json.dumps(ErrorLog)
 
 
 @app.route('/')
 def index():
     return render_template('index.html', async_mode=socketio.async_mode)
+
+
+@socketio.on('setfilename', namespace='/test')
+def setfilename():
+    global filename
+    filename='../jupyter.log'
+
 
 
 
@@ -81,6 +121,8 @@ def test_connect():
     with thread_lock:
         if thread is None:
           filename='../jupyter.log'
+          errorcount=0
+          print("ErrCount:"+str(errorcount))
           thread = socketio.start_background_task(background_thread, filename)
     emit('my_response', {'data': 'Connected', 'count': 0})
 
