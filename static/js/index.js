@@ -1,3 +1,6 @@
+const namespace = '/test'
+const socket = io(namespace)
+
 const fakeError = { Time: 'Time', ErrorType: 'Error type', ErrorMessage: 'Message' }
 const errors = [
     {
@@ -7,17 +10,17 @@ const errors = [
     }
 ]
 
+socket.on('connect', () => {
+    socket.emit('my_event', { data: "I'm connected!" })
+})
+
+
 class Table extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
             errors: errors
         }
-        const namespace = '/test'
-        const socket = io(namespace)
-        socket.on('connect', () => {
-            socket.emit('my_event', { data: "I'm connected!" })
-        })
         socket.on('err', message => {
             const newError = JSON.parse(message)
             errors.unshift(newError)
@@ -44,11 +47,15 @@ class Table extends React.Component {
 }
 
 class Row extends React.Component {
+    openStack() {
+        socket.emit('openfile', this.props.error)
+    }
+
     render() {
         const header = this.props.header
         const error = this.props.error
         return (
-            <tr className="table">
+            <tr className="table" onClick = {() => {this.openStack()}}>
                 <Cell oneLine={true} header={header} data={error.Time}></Cell>
                 <Cell oneLine={true} header={header} data={error.ErrorType}></Cell>
                 <Cell clamped={true} header={header} data={error.ErrorMessage}></Cell>
@@ -65,11 +72,8 @@ class Cell extends React.Component {
             return <th scope="col">{data}</th>
         } else {
             let classes = ''
-
             if (oneLine) classes += ' one-line'
-
             if (this.props.clamped) classes += ' clamped'
-
             return <td className={classes}>{data}</td>
         }
     }
