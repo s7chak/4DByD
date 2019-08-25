@@ -25,6 +25,18 @@ class AppContainer extends React.Component {
         })
     }
 
+    predict() {
+        this.setState({
+            location: 'predict'
+        })
+    }
+
+    console() {
+        this.setState({
+            location: 'console'
+        })
+    }
+
     render() {
         if (this.state.location == 'initial') {
             dom.$video.show()
@@ -44,11 +56,33 @@ class AppContainer extends React.Component {
                     </p>
                 </div>
             )
-        } else {
+        } else if (this.state.location == 'console') {
             dom.$video.hide()
             dom.$mount.css('background', '')
             $('body').css('background-color', '#e91e1e54')
-            return <TableContainer errors={this.state.errors} />
+            return (
+                <TableContainer
+                    predict={this.predict.bind(this)}
+                    console={this.console.bind(this)}
+                    errors={this.state.errors}
+                />
+            )
+        } else {
+            dom.$video.hide()
+            dom.$mount.css('background', '')
+            return (
+                <div>
+                    <p>The next error message will be:</p>
+                    <p>
+                        error,: couldn\\t connect to server aaa.a.a.a:aaaaa, connection attempt failed: socketexception
+                    </p>
+                    <button
+                        onClick={() => {
+                            this.console.bind(this)
+                        }}
+                    ></button>
+                </div>
+            )
         }
     }
 }
@@ -63,6 +97,13 @@ class TableContainer extends React.Component {
                         <Table errors={this.props.errors} />
                     </div>
                     <p className="center gray pt-3">Click on an error to open the relevant files</p>
+                    <button
+                        onClick={() => {
+                            this.setState
+                        }}
+                    >
+                        Predict
+                    </button>
                 </div>
             )
         } else {
