@@ -3,11 +3,11 @@ body {
 }
 
 .gray {
-    color: #606060;
+    color: #555555;
 }
 
 html,
-body {
+body, #mount {
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -62,7 +62,7 @@ th {
 #app {
     display: block;
     flex: 0 1 auto;
-    overflow-y: scroll;
+    overflow-y: auto;
 }
 
 .center {
