@@ -99,7 +99,7 @@ class TableContainer extends React.Component {
                     <p className="center gray pt-3">Click on an error to open the relevant files</p>
                     <button
                         onClick={() => {
-                            this.setState
+                            this.props.predict()
                         }}
                     >
                         Predict
