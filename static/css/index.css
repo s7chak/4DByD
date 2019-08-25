@@ -1,5 +1,9 @@
 body {
-    background-color: #8b8589;
+    background-color: #e91e1e54;
+}
+
+.gray {
+    color: #606060;
 }
 
 html,
@@ -59,4 +63,8 @@ th {
     display: block;
     flex: 0 1 auto;
     overflow-y: scroll;
+}
+
+.center {
+    text-align: center;
 }

@@ -4,7 +4,7 @@ from flask import Flask, render_template, jsonify, session, request, \
 	copy_current_request_context
 from flask_socketio import SocketIO, emit, join_room, leave_room, \
 	close_room, rooms, disconnect
-
+from forms import ErrorSearchForm
 import time, re, json, csv, requests, os
 import subprocess
 from datetime import datetime, date
@@ -26,13 +26,13 @@ api_key = "02e4e46503b043e2bf441dc3108e22b4"
 
 
 def flatten(arr):
-        print(arr)
-        if isinstance(arr, list):
-            if len(arr) == 0:
-                return None
-            elif len(arr) == 1:
-                return arr[0]
-        return arr
+    print(arr)
+    if isinstance(arr, list):
+        if len(arr) == 0:
+            return None
+        elif len(arr) == 1:
+            return arr[0]
+    return arr
 
 
 def background_thread(filename):
@@ -51,18 +51,24 @@ def background_thread(filename):
         elif 'Got exception' in line:
             print("-------------Found Error!")
             lines += line
-        while 'Error:' not in line:
-            line = thefile.readline()
-            lines += line
-        line = thefile.readline()
-        print(lines)
-        print(log_list)
 
-        with open('data2.csv', 'w') as output_file:
-            dict_writer = csv.DictWriter(output_file, fieldnames=["ID", "Time", "ErrorType", "ErrorMessage", "File-Line", "ProjectName"])
-            dict_writer.writeheader()
-            dict_writer.writerows(log_list)
-        socketio.emit('err', errorLog(lines), namespace='/test')
+            while 'Error:' not in line:
+                line = thefile.readline()
+                lines += line
+            line = thefile.readline()
+            print(lines)
+
+            socketio.emit('err', errorLog(lines), namespace='/test')
+
+            print(log_list)
+
+            with open('data2.csv', 'w') as output_file:
+                dict_writer = csv.DictWriter(output_file,
+                                             fieldnames=["ID", "Time", "ErrorType", "ErrorMessage", "File-Line",
+                                                         "ProjectName"])
+                dict_writer.writeheader()
+                dict_writer.writerows(log_list)
+
 # Generate Json String (The return is Json String, therefore index will be weird)
 
 def errorLog(i):
@@ -92,7 +98,7 @@ def errorLog(i):
         ErrorDest = {"File": flatten(File[j]), "Line": flatten(Line[j])}
         # Match sequence with Tuple
         Dict[j] = ErrorDest
-        x = x + 1
+    x = x + 1
     today = datetime.now().strftime("%Y-%m-%d")
     date = datetime.strptime(Time, "%Y-%m-%d %H:%M:%S")
     datestring = date.strftime("%Y-%m-%d")
@@ -103,11 +109,11 @@ def errorLog(i):
         errorcount += 1
     else:
         errorcount = 0
-        ProjectName = datestring + "_" + str(errorcount)
-        ErrorLog = {"ID": errorcount, "Time": Time, "ErrorType": ErrorType, "ErrorMessage": ErrorMsg, "File-Line": Dict,
-        "ProjectName": ProjectName}
+    ProjectName = datestring + "_" + str(errorcount)
+    ErrorLog = {"ID": errorcount, "Time": Time, "ErrorType": ErrorType, "ErrorMessage": ErrorMsg, "File-Line": Dict,
+                "ProjectName": ProjectName}
     log_list.append(ErrorLog)
-    createFolder()
+
     return json.dumps(ErrorLog)
 
 @app.route('/')
@@ -124,14 +130,16 @@ def setfilename():
 
 @socketio.on('openfile', namespace='/test')
 def openfilesocket(message):
-	print("------OPEN FILE------")
-	jsonobject = message
-	fileLine = jsonobject['File-Line']
-	for key, value in fileLine.items():
-		File = value['File']
-		Line = value['Line']
-		if '<ipython' not in File:
-			openfile(File, Line)
+    print("------OPEN FILE------")
+    jsonobject = message
+    fileLine = jsonobject['File-Line']
+    print("------OPEN FILE------")
+    for key, value in fileLine.items():
+        print("------OPEN FILE------")
+        File = value['File']
+        Line = value['Line']
+        if '<ipython' not in File:
+            openfile(File, Line)
 
 
 def openfile(File, Line=""):
@@ -140,13 +148,11 @@ def openfile(File, Line=""):
 
 
 @app.route("/search", methods=['GET', 'POST'])
-def zipsearch():
-	form = ErrorSearchForm()
-	if form.validate_on_submit():
-		func = MainFunctions()
-		vsworkspace = func.get_vsfile_on_search(form.filename.data)
-
-	return render_template("search.html", title="Search Error", form=form)
+def errorsearch():
+    form = ErrorSearchForm()
+    if form.validate_on_submit():
+        print(searchFile(form.filename.data, form.date.data))
+    return render_template("search.html", title="Search Error", form=form)
 
 
 @socketio.on('connect', namespace='/test')
@@ -192,14 +198,17 @@ def createFolder():
     print("resp:")
     response = session.post(str(baseUrl + '/dms/objects'), files=multipart_form_data, headers=headerDict)
     print(response.json())
-    return (response.content)
+    addFile(folderName)
+    # return (response.content)
 
 
 # @app.route("/<folder>/add", methods=['GET', 'POST'])
 def addFile(folder):
 
     queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}')".format(folder), "skipCount": 0, "maxItems": 50}}
-    metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "documentType1"}, "name": {"value": "error66"}, "enaio:parentId": {"value": "8b3b452c-07d2-489a-8b79-91d46f802bac"} }, "contentStreams": [{"cid": "cid_63apple"}] }] }
+
+    metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "documentType1"}, "name": {"value": filename}, "enaio:parentId": {"value": "8b3b452c-07d2-489a-8b79-91d46f802bac"} }, "contentStreams": [{"cid": "cid_63apple"}] }] }
+
 
     jsonPath = "json/metadatachild.json"
     contentPath = "content/error8.txt" ## this is the error file you are trying to upload
@@ -238,6 +247,10 @@ def searchFile():
     fileName = request.args.get('name')
     date = request.args.get('date')
 
+
+    fileName = request.args.get('name')
+    date = request.args.get('date')
+
     queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}') AND enaio:creationDate = '{}'".format(fileName,date), "skipCount": 0, "maxItems": 50}}
     print(queryJson)
 
@@ -259,8 +272,6 @@ def searchFile():
     print("resp")
     response = session.post(str(baseUrl + '/dms/objects/search'), json=queryJson, headers=headerDict)
     print(response.json())
-
-    
     return (response.content)
 
 if __name__ == '__main__':

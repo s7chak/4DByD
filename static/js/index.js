@@ -2,20 +2,13 @@ const namespace = '/test'
 const socket = io(namespace)
 
 const fakeError = { Time: 'Time', ErrorType: 'Error type', ErrorMessage: 'Message' }
-const errors = [
-    {
-        Time: '2015-06-07',
-        ErrorType: 'NullPointerException',
-        ErrorMessage: 'project.ProjectItems.AddFromFile("C:/Users/sv/Documents/Visual")'
-    }
-]
+const errors = []
 
 socket.on('connect', () => {
     socket.emit('my_event', { data: "I'm connected!" })
 })
 
-
-class Table extends React.Component {
+class TableContainer extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
@@ -31,18 +24,43 @@ class Table extends React.Component {
     }
 
     render() {
+        if (errors.length > 0) {
+            return (
+                <div>
+                    <h2 class="center gray pb-3">4DByD debugger console</h2>
+                    <div class="card border shadow rounded" id="app">
+                        <Table errors={this.state.errors} />
+                    </div>
+                    <p class="center gray pt-3">Click on an error to open the relevant files</p>
+                </div>
+            )
+        } else {
+            return (
+                <div>
+                    <h2 class="center gray pb-3">4DByD debugger console</h2>
+                    <h4 class="center gray">Hurray! you have no errors!</h4>
+                </div>
+             )
+        }
+
+    }
+}
+
+class Table extends React.Component {
+    render() {
         return (
             <table className="table table-striped table-hover table-light mb-0">
                 <thead>
                     <Row header={true} error={fakeError}></Row>
                 </thead>
                 <tbody>
-                    {errors.map(error => (
+                    {this.props.errors.map(error => (
                         <Row header={false} error={error}></Row>
                     ))}
                 </tbody>
             </table>
         )
+
     }
 }
 
@@ -80,6 +98,6 @@ class Cell extends React.Component {
 }
 
 $(document).ready(function() {
-    let domContainer = document.querySelector('#app')
-    ReactDOM.render(<Table />, domContainer)
+    let domContainer = document.querySelector('#app-container')
+    ReactDOM.render(<TableContainer />, domContainer)
 })
