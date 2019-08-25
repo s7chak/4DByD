@@ -102,7 +102,7 @@ class TableContainer extends React.Component {
                             this.props.predict()
                         }}
                     >
-                        Predict
+                        Predict next error
                     </button>
                 </div>
             )
