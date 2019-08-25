@@ -1,5 +1,5 @@
 body {
-    background-color: #e91e1e54;
+    background-color: #000000;
 }
 
 .gray {
@@ -7,7 +7,8 @@ body {
 }
 
 html,
-body, #mount {
+body,
+#mount {
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -16,10 +17,6 @@ body, #mount {
 
 tbody {
     font-family: monaco, Consolas, Lucida Console, monospace;
-}
-
-td {
-    cursor: pointer;
 }
 
 td,
@@ -40,6 +37,10 @@ th {
     }
 }
 
+.text-larger {
+    font-size: 24px;
+}
+
 .one-line {
     white-space: nowrap;
 }
@@ -50,16 +51,16 @@ th {
     -webkit-box-orient: vertical;
 }
 
-#app-container {
+#table-container {
     display: flex;
     flex-direction: column;
     justify-content: center;
     padding: 0;
-    max-height: 800px;
+    max-height: 750px;
     flex: 0 0 auto;
 }
 
-#app {
+#table-card {
     display: block;
     flex: 0 1 auto;
     overflow-y: auto;
@@ -67,4 +68,30 @@ th {
 
 .center {
     text-align: center;
+}
+
+.clickable {
+    cursor: pointer;
+}
+/* 
+#mount {
+    background: rgba(0, 0, 100, 0.5);
+} */
+
+#intro-container {
+    padding: 100px 0;
+    color: #ffffff;
+    width: 60%;
+    min-width: 800px;
+    background: rgba(0, 0, 0, 0.7);
+    border: solid white;
+}
+
+#background-video {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    z-index: -1;
 }

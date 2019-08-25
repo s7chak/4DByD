@@ -1,16 +1,19 @@
 const namespace = '/test'
 const socket = io(namespace)
 
+const dom = {}
+
 const errors = []
 
 socket.on('connect', () => {
     socket.emit('my_event', { data: "I'm connected!" })
 })
 
-class TableContainer extends React.Component {
+class AppContainer extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
+            location: 'initial',
             errors: errors
         }
         socket.on('err', message => {
@@ -23,21 +26,49 @@ class TableContainer extends React.Component {
     }
 
     render() {
+        if (this.state.location == 'initial') {
+            dom.$video.show()
+            dom.$mount.css('background', 'rgba(0, 0, 100, 0.5)')
+            $('body').css('background-color', '#000000')
+            return (
+                <div
+                    className="container clickable"
+                    id="intro-container"
+                    onClick={() => {
+                        this.setState({ location: 'console' })
+                    }}
+                >
+                    <h1 className="center pb-3">4DByD debugging</h1>
+                    <p className="center text-larger pb-3">
+                        For developers by developers, to make debugging fast and painless.
+                    </p>
+                </div>
+            )
+        } else {
+            dom.$video.hide()
+            dom.$mount.css('background', '')
+            $('body').css('background-color', '#e91e1e54')
+            return <TableContainer errors={this.state.errors} />
+        }
+    }
+}
+
+class TableContainer extends React.Component {
+    render() {
         if (errors.length > 0) {
             return (
-                <div class="container" id="app-container">
-                    <h2 class="center gray pb-3">4DByD debugger console</h2>
-                    <div class="card border shadow rounded" id="app">
-                        <Table errors={this.state.errors} />
+                <div className="container" id="table-container">
+                    <h2 className="center gray pb-3">4DByD debugger console</h2>
+                    <div className="card border shadow rounded" id="table-card">
+                        <Table errors={this.props.errors} />
                     </div>
-                    <p class="center gray pt-3">Click on an error to open the relevant files</p>
+                    <p className="center gray pt-3">Click on an error to open the relevant files</p>
                 </div>
             )
         } else {
             return (
                 <div>
-                    <h2 class="center gray pb-3">4DByD debugger console</h2>
-                    <h4 class="center gray">Hurray! you have no errors!</h4>
+                    <h4 className="center gray">You have no errors, for now ;)</h4>
                 </div>
             )
         }
@@ -96,7 +127,7 @@ class Row extends React.Component {
 class Cell extends React.Component {
     render() {
         const oneLine = this.props.oneLine
-        let classes = ''
+        let classes = 'clickable'
         if (oneLine) classes += ' one-line'
         if (this.props.clamped) classes += ' clamped'
         return <td className={classes}>{this.props.data}</td>
@@ -104,6 +135,9 @@ class Cell extends React.Component {
 }
 
 $(document).ready(function() {
+    dom.$video = $('#background-video')
+    dom.$mount = $('#mount')
+
     let domContainer = document.querySelector('#mount')
-    ReactDOM.render(<TableContainer />, domContainer)
+    ReactDOM.render(<AppContainer />, domContainer)
 })
