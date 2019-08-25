@@ -1,0 +1,40 @@
+body {
+    background-color: #8b8589 ;
+}
+
+td,
+th {
+    color: #ffffff;
+    padding: 20px 30px !important;
+    vertical-align: middle !important;
+}
+
+td {
+    font-family: monaco, Consolas, Lucida Console, monospace;
+}
+
+@media (min-width: 1366px) {
+    .container {
+        max-width: 1300px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1520px;
+    }
+}
+
+.one-line {
+    white-space: nowrap;
+}
+
+.clamped {
+    overflow: hidden;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+#app {
+    padding: 50px 0;
+}

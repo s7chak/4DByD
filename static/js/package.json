@@ -1,0 +1,10 @@
+{
+    "scripts": {
+        "build": "babel src -d lib"
+    },
+    "dependencies": {
+        "@babel/cli": "^7.5.5",
+        "@babel/core": "^7.5.5",
+        "babel-preset-react-app": "^9.0.1"
+    }
+}
