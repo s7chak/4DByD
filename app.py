@@ -21,7 +21,8 @@ thread = None
 thread_lock = Lock()
 filename='test.txt'
 errorcount=0
-
+log_list=[]
+​
 def flatten(arr):
     print(arr)
     if isinstance(arr, list):
@@ -30,7 +31,7 @@ def flatten(arr):
         elif len(arr) == 1:
             return arr[0]
     return arr
-
+​
 def background_thread(filename):
     
     print(filename)
@@ -53,12 +54,19 @@ def background_thread(filename):
                 lines+=line
             line=thefile.readline()
             print(lines)
-
+            print(log_list)
+​
+            with open('data2.csv', 'w') as output_file:
+                dict_writer = csv.DictWriter(output_file, fieldnames=["ID","Time","ErrorType","ErrorMessage","File-Line","ProjectName"])
+                dict_writer.writeheader()
+                dict_writer.writerows(log_list)
+​
+​
             socketio.emit('err', errorLog(lines), namespace='/test')
-
-
-
-
+​
+        
+​
+​
 #Generate Json String (The return is Json String, therefore index will be weird)
     
 def errorLog(i):
@@ -101,8 +109,10 @@ def errorLog(i):
         errorcount=0
     ProjectName = datestring+"_"+str(errorcount)
     ErrorLog = {"ID":errorcount,"Time":Time,"ErrorType":ErrorType,"ErrorMessage":ErrorMsg,"File-Line":Dict, "ProjectName":ProjectName}
+    log_list.append(ErrorLog)
+    
     return json.dumps(ErrorLog)
-
+​
 
 @app.route('/')
 def index():
@@ -131,12 +141,20 @@ def openfilesocket(message):
             openfile(File,Line)
 
 
-
-
-
 def openfile(File,Line=""):
     Path = File+":"+Line
     subprocess.Popen(['code', '-g', Path])
+
+
+@app.route("/search", methods=['GET','POST'])
+def zipsearch():
+    form = ErrorSearchForm()
+    if form.validate_on_submit():
+        func = MainFunctions()
+        vsworkspace = func.get_vsfile_on_search(form.filename.data)
+
+    return render_template("search.html", title="Search Error", form=form)
+
 
 
 @socketio.on('connect', namespace='/test')
