@@ -36,33 +36,33 @@ def flatten(arr):
 
 
 def background_thread(filename):
-        print(filename)
+    print(filename)
+    lines = ''
+    l2 = 'none'
+    thefile = open(filename, 'r')
+    thefile.seek(0, 2)
+    while True:
         lines = ''
-        l2 = 'none'
-        thefile = open(filename, 'r')
-        thefile.seek(0, 2)
-        while True:
-            lines = ''
-            print("reading....")
+        print("reading....")
+        line = thefile.readline()
+        if not line:
+            time.sleep(1)
+            continue
+        elif 'Got exception' in line:
+            print("-------------Found Error!")
+            lines += line
+        while 'Error:' not in line:
             line = thefile.readline()
-            if not line:
-                time.sleep(1)
-                continue
-            elif 'Got exception' in line:
-                print("-------------Found Error!")
-                lines += line
-            while 'Error:' not in line:
-                line = thefile.readline()
-                lines += line
-            line = thefile.readline()
-            print(lines)
-            print(log_list)
+            lines += line
+        line = thefile.readline()
+        print(lines)
+        print(log_list)
 
-            with open('data2.csv', 'w') as output_file:
-                dict_writer = csv.DictWriter(output_file, fieldnames=["ID", "Time", "ErrorType", "ErrorMessage", "File-Line", "ProjectName"])
-                dict_writer.writeheader()
-                dict_writer.writerows(log_list)
-            socketio.emit('err', errorLog(lines), namespace='/test')
+        with open('data2.csv', 'w') as output_file:
+            dict_writer = csv.DictWriter(output_file, fieldnames=["ID", "Time", "ErrorType", "ErrorMessage", "File-Line", "ProjectName"])
+            dict_writer.writeheader()
+            dict_writer.writerows(log_list)
+        socketio.emit('err', errorLog(lines), namespace='/test')
 # Generate Json String (The return is Json String, therefore index will be weird)
 
 def errorLog(i):
@@ -160,112 +160,108 @@ def test_connect():
 			thread = socketio.start_background_task(background_thread, filename)
 	emit('my_response', {'data': 'Connected', 'count': 0})
 
-@app.route("/create", methods=['GET', 'POST'])
+# @app.route("/create", methods=['GET', 'POST'])
 def createFolder():
 
-    if request.method == 'POST':
+    today = date.today()
+    mmddyy = today.strftime("%m-%d-%y")
+    folderName = mmddyy + ""
+    metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "userDirectory"}, "name": {"value": folderName}}}] }
 
-        today = date.today()
-        mmddyy = today.strftime("%m-%d-%y")
-        folderName = mmddyy + ""
-        metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "userDirectory"}, "name": {"value": folderName}}}] }
+    jsonPath = r'json/metadataparent.json'
+    fd = os.open(jsonPath, os.O_RDWR|os.O_CREAT)
+    with open(jsonPath, 'w') as fd:
+        fd.write(json.dumps(metaDataJson))
 
-        jsonPath = r'json/metadataparent.json'
-        fd = os.open(jsonPath, os.O_RDWR|os.O_CREAT)
-        with open(jsonPath, 'w') as fd:
-            fd.write(json.dumps(metaDataJson))
+    headerDict = {}
+    baseUrl = 'https' + '://' + 'api.yuuvis.io'
 
-        headerDict = {}
-        baseUrl = 'https' + '://' + 'api.yuuvis.io'
+    header_name = 'Content-Type'
+    # headerDict['Content-Type'] = 'multipart_form_data, application/x-www-form-urlencoded'
+    # headerDict['Content-Type'] = 'application/json'
 
-        header_name = 'Content-Type'
-        # headerDict['Content-Type'] = 'multipart_form_data, application/x-www-form-urlencoded'
-        # headerDict['Content-Type'] = 'application/json'
+    header_name = 'Ocp-Apim-Subscription-Key'
+    headerDict['Ocp-Apim-Subscription-Key'] = api_key
 
-        header_name = 'Ocp-Apim-Subscription-Key'
-        headerDict['Ocp-Apim-Subscription-Key'] = api_key
+    session = requests.Session()
 
-        session = requests.Session()
+    multipart_form_data = {
+        'data' :('data.json', open(jsonPath, 'rb'), 'application/json')
+    }
 
-        multipart_form_data = {
-            'data' :('data.json', open(jsonPath, 'rb'), 'application/json')
-        }
-
-        print("resp:")
-        response = session.post(str(baseUrl + '/dms/objects'), files=multipart_form_data, headers=headerDict)
-        print(response.json())
-        return (response.content)
+    print("resp:")
+    response = session.post(str(baseUrl + '/dms/objects'), files=multipart_form_data, headers=headerDict)
+    print(response.json())
+    return (response.content)
 
 
-@app.route("/<folder>/add", methods=['GET', 'POST'])
+# @app.route("/<folder>/add", methods=['GET', 'POST'])
 def addFile(folder):
 
-    if request.method == 'POST':
+    queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}')".format(folder), "skipCount": 0, "maxItems": 50}}
+    metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "documentType1"}, "name": {"value": "error66"}, "enaio:parentId": {"value": "8b3b452c-07d2-489a-8b79-91d46f802bac"} }, "contentStreams": [{"cid": "cid_63apple"}] }] }
 
-        queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}')".format(folder), "skipCount": 0, "maxItems": 50}}
-        metaDataJson = { "objects": [{"properties": {"enaio:objectTypeId" : {"value" : "documentType1"}, "name": {"value": "error66"}, "enaio:parentId": {"value": "8b3b452c-07d2-489a-8b79-91d46f802bac"} }, "contentStreams": [{"cid": "cid_63apple"}] }] }
+    jsonPath = "json/metadatachild.json"
+    contentPath = "content/error8.txt" ## this is the error file you are trying to upload
 
-        jsonPath = "json/metadatachild.json"
-        contentPath = "content/error8.txt" ## this is the error file you are trying to upload
+    fd = os.open(jsonPath, os.O_RDWR | os.O_CREAT)
+    with open(jsonPath, 'w') as fd:
+        fd.write(json.dumps(metaDataJson))
 
-        fd = os.open(jsonPath, os.O_RDWR | os.O_CREAT)
-        with open(jsonPath, 'w') as fd:
-            fd.write(json.dumps(metaDataJson))
+    headerDict = {}
+    baseUrl = 'https' + '://' + 'api.yuuvis.io'
 
-        headerDict = {}
-        baseUrl = 'https' + '://' + 'api.yuuvis.io'
+    header_name = 'Content-Type'
 
-        header_name = 'Content-Type'
+    header_name = 'Ocp-Apim-Subscription-Key'
+    headerDict['Ocp-Apim-Subscription-Key'] = api_key
 
-        header_name = 'Ocp-Apim-Subscription-Key'
-        headerDict['Ocp-Apim-Subscription-Key'] = api_key
+    session = requests.Session()
 
-        session = requests.Session()
+    multipart_form_data = {
+        'data' :('data.json', open(jsonPath, 'rb'), 'application/json'),
+        'cid_63apple' : ('content.pdf', open(contentPath, 'rb'), 'application/pdf')
+    }
 
-        multipart_form_data = {
-            'data' :('data.json', open(jsonPath, 'rb'), 'application/json'),
-            'cid_63apple' : ('content.pdf', open(contentPath, 'rb'), 'application/pdf')
-        }
+    print(type(multipart_form_data))
+    #print("--searchResp")
+    #searchResp = session.post(str(baseUrl + '/dms/objects/search'), json=queryJson, headers=headerDict)
+    #print(searchResp.json())
 
-        print(type(multipart_form_data))
-        #print("--searchResp")
-        #searchResp = session.post(str(baseUrl + '/dms/objects/search'), json=queryJson, headers=headerDict)
-        #print(searchResp.json())
+    response = session.post(str(baseUrl + '/dms/objects'), files=multipart_form_data, headers=headerDict)
+    print("--resp--")
+    print(response.json())
+    return (response.content)
 
-        response = session.post(str(baseUrl + '/dms/objects'), files=multipart_form_data, headers=headerDict)
-        print("--resp--")
-        print(response.json())
-        return (response.content)
-
-@app.route("/searchFile", methods=['GET','POST'])
+# @app.route("/searchFile", methods=['GET','POST'])
 def searchFile():
+    fileName = request.args.get('name')
+    date = request.args.get('date')
 
-    if request.method == 'GET':
-        fileName = request.args.get('name')
-        date = request.args.get('date')
+    queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}') AND enaio:creationDate = '{}'".format(fileName,date), "skipCount": 0, "maxItems": 50}}
+    print(queryJson)
 
-        queryJson = {"query": { "statement": "SELECT * FROM enaio:object WHERE CONTAINS ('{}') AND enaio:creationDate = '{}'".format(fileName,date), "skipCount": 0, "maxItems": 50}}
-        print(queryJson)
+    headerDict = {}
+    baseUrl = 'https' + '://' + 'api.yuuvis.io'
 
-        headerDict = {}
-        baseUrl = 'https' + '://' + 'api.yuuvis.io'
+    header_name = 'Content-Type'
 
-        header_name = 'Content-Type'
+    header_name = 'Ocp-Apim-Subscription-Key'
+    headerDict['Ocp-Apim-Subscription-Key'] = api_key
 
-        header_name = 'Ocp-Apim-Subscription-Key'
-        headerDict['Ocp-Apim-Subscription-Key'] = api_key
+    session = requests.Session()
 
-        session = requests.Session()
+    multipart_form_data = {
+        'data': ('data.json', queryJson, 'application/json')
+    }
 
-        multipart_form_data = {
-            'data': ('data.json', queryJson, 'application/json')
-        }
+    print(type(multipart_form_data))
+    print("resp")
+    response = session.post(str(baseUrl + '/dms/objects/search'), json=queryJson, headers=headerDict)
+    print(response.json())
 
-        print(type(multipart_form_data))
-        print("resp")
-        response = session.post(str(baseUrl + '/dms/objects/search'), json=queryJson, headers=headerDict)
-        print(response.json())
-        return (response.content)
+    
+    return (response.content)
 
 if __name__ == '__main__':
 	socketio.run(app, debug=True)
