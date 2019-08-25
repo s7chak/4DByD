@@ -6,7 +6,9 @@ from flask_socketio import SocketIO, emit, join_room, leave_room, \
     close_room, rooms, disconnect
 
 import time, re, json
+import subprocess
 from datetime import datetime
+
 # Set this variable to "threading", "eventlet" or "gevent" to test the
 # different async modes, or leave it set to None for the application to choose
 # the best option based on installed packages.
@@ -51,7 +53,8 @@ def background_thread(filename):
                 lines+=line
             line=thefile.readline()
             print(lines)
-            emit('err', errorLog(lines))
+
+            socketio.emit('err', errorLog(lines), namespace='/test')
 
 
 
@@ -98,7 +101,6 @@ def errorLog(i):
         errorcount=0
     ProjectName = datestring+"_"+str(errorcount)
     ErrorLog = {"ID":errorcount,"Time":Time,"ErrorType":ErrorType,"ErrorMessage":ErrorMsg,"File-Line":Dict, "ProjectName":ProjectName}
-
     return json.dumps(ErrorLog)
 
 
@@ -111,8 +113,29 @@ def index():
 def setfilename():
     global filename
     filename='../jupyter.log'
+    socketio.emit('msg', jsonify('success'), namespace='/test')
 
 
+
+
+
+@socketio.on('openfile', namespace='/test')
+def openfilesocket(message):
+    jsonobject = json.loads(message)
+    print("---------"+message)
+    fileLine = jsonobject['File-Line']
+    for key, value in fileLine.items():
+        File=value['File']
+        Line=value['Line']
+        if '<ipython' not in File:
+            openfile(File,Line)
+
+
+
+
+def openfile(File,Line=""):
+    Path = File+":"+Line
+    subprocess.Popen(['code', '-g', Path])
 
 
 @socketio.on('connect', namespace='/test')
