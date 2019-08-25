@@ -1,0 +1,1 @@
+{"query": {"statement": "SELECT * FROM enaio:object WHERE CONTAINS ('None')", "skipCount": 0, "maxItems": 50}}
